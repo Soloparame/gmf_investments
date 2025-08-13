@@ -122,11 +122,20 @@ all_df = all_df[(all_df["Date"] >= pd.to_datetime(START_DATE)) & (all_df["Date"]
 all_df = all_df.sort_values("Date").reset_index(drop=True)
 
 price_col = safe_price_column(all_df)
-prices = all_df[["Date", price_col]].dropna().copy()
-prices.rename(columns={price_col: "Price"}, inplace=True)
 
-# Use log price for modeling (stabilizes variance); we'll exponentiate back to price later.
-prices["LogPrice"] = np.log(prices["Price"])  # safe because Price > 0 for stocks
+# Extract Date + price column, drop NA
+prices = all_df[["Date", price_col]].dropna().copy()
+
+# Rename and ensure numeric type
+prices.rename(columns={price_col: "Price"}, inplace=True)
+prices["Price"] = pd.to_numeric(prices["Price"], errors="coerce")
+
+# Drop rows where price couldn't be converted to numeric
+prices.dropna(subset=["Price"], inplace=True)
+
+# Log transform (safe because all prices > 0)
+prices["LogPrice"] = np.log(prices["Price"])
+  # safe because Price > 0 for stocks
 
 # Split
 train_df, test_df = train_test_split_by_date(prices, "Date", TRAIN_END, TEST_START)
